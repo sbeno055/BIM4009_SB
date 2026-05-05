@@ -87,7 +87,7 @@ read_fpkm_sheet <- function(sheet_name) {
 raw_all <- map_dfr(sheets, read_fpkm_sheet)
 
 
-##### LABEL SAMPLES #####
+##### Label #####
 
 # pivot to long format so each row is one gene × one sample
 fpkm_long <- raw_all %>%
@@ -99,7 +99,7 @@ fpkm_long <- raw_all %>%
   left_join(sample_key, by = "sample")  # attach HuR status and drug condition
 
 
-##### SCALE REPLICATE 3 ######
+##### Scale replicate 3 ######
 
 # replicate 3 was sequenced separately, so its total library size differs from
 # replicates 1 and 2 so we scaled it so all three replicates are comparable
@@ -133,7 +133,7 @@ fpkm_scaled <- fpkm_long %>%
   )
 
 
-##### AVERAGE REPLICATES #####
+##### Average replicates #####
 
 # average the three replicates into one mean FPKM value per gene per condition
 mean_fpkm <- fpkm_scaled %>%
@@ -153,7 +153,7 @@ fpkm_wide <- mean_fpkm %>%
   pivot_wider(names_from = condition, values_from = mean_fpkm)
 
 
-##### FILTER LOW-EXPRESSION GENES ######
+##### Filter low-expression genes ######
 
 # constants
 PSEUDOCOUNT      <- 1    # added to all raw fpkm to avoid log(0) errors
@@ -168,31 +168,20 @@ fpkm_wide <- fpkm_wide %>%
 
 # 12,249 genes remain after filtering
 
-##### COMPUTE LOG2 FOLD CHANGES #####
+##### Compute log2 fold changes #####
 
-# four contrasts calculated: the drug effect, the HuR effect, and their interaction
-
-# (A)  Hur_Ctrl    = HuR WT, untreated
-# (B)  Hur_Eltro   = HuR WT, Eltrombopag
-# (C)  HurKO_Ctrl  = HuR KO,  untreated
-# (D)  HurKO_Eltro = HuR KO,  Eltrombopag
-
+# four contrasts and interaction calculated 
 fpkm_contrasts <- fpkm_wide %>%
   mutate(
-    log2FC_Eltro_Hur    = log2(Hur_Eltro    / Hur_Ctrl),
-    
-    log2FC_Eltro_HurKO  = log2(HurKO_Eltro  / HurKO_Ctrl),
-    
-    log2FC_Hur_Ctrl     = log2(Hur_Ctrl     / HurKO_Ctrl),
-    
-    log2FC_Hur_Eltro    = log2(Hur_Eltro    / HurKO_Eltro),
-    
+    log2FC_Eltro_Hur    = log2(Hur_Eltro    / Hur_Ctrl), #HuR KO,  untreated
+    log2FC_Eltro_HurKO  = log2(HurKO_Eltro  / HurKO_Ctrl), #HuR KO,  Eltrombopag
+    log2FC_Hur_Ctrl     = log2(Hur_Ctrl     / HurKO_Ctrl), #HuR WT, untreated
+    log2FC_Hur_Eltro    = log2(Hur_Eltro    / HurKO_Eltro), #HuR WT, Eltrombopag
     # interaction: difference in drug effect depending on HuR status
     Interaction         = log2FC_Eltro_Hur - log2FC_Eltro_HurKO
   )
 
-
-##### CLASSIFY ARE STATUS ######
+##### Classify ARE status ######
 
 # ARE+ genes contain AU-rich elements (any of 5 clusters) from the ARED database
 ared_raw  <- read_excel("/Users/sarahcerine/Desktop/Results.xlsx")
@@ -207,8 +196,7 @@ fpkm_contrasts <- fpkm_contrasts %>%
     )
   )
 
-
-##### STATISTICAL TESTS ######
+##### Statistical tests ######
 
 # Kolmogorov test: testing normality 
 # ARE+ under control
@@ -339,7 +327,7 @@ table_fig3B <- fpkm_contrasts %>%
     `n loci`               = n()
   ) 
 
-##### Figure 4 - distribution plots
+##### Figure 4 - distribution plots #####
 
 # A — density plot of the Eltrombopag drug effect in HuR WT vs HuR KO
 fig4A_data <- fpkm_contrasts %>%
@@ -431,7 +419,7 @@ table_fig4D <- fpkm_contrasts %>%
   ) %>%
   pivot_longer(everything(), names_to = "Contrast", values_to = "Number of Loci")
 
-##### Figure 5 — dyad interaction 
+##### Figure 5 — dyad interaction  #####
 
 # rank all genes by the absolute size of their interaction score
 interaction_ranked <- fpkm_contrasts %>%
